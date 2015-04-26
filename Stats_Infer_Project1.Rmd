@@ -2,7 +2,7 @@
 title: "Understanding the Central Limit Theorem via an example."
 author: "Guillaume Dreyer"
 date: "March 16, 2015"
-output: pdf_document
+output: html_document
 ---
 
 ## Overview.
