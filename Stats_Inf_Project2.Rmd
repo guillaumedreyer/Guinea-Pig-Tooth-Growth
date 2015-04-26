@@ -1,0 +1,191 @@
+---
+title: "An analysis of the effect of vitamin C \n  on the tooth length growth of guinea
+  pigs."
+author: "Guillaume Dreyer"
+output: html_document
+---
+
+# Analysis report.
+
+We study the data set 'ToothGrowth', and draw some conclusions from it.
+
+## 1. Load the 'ToothGrowth' dataset.hist
+```{r}
+data(ToothGrowth)       # load the 'ToothGrowth' dataset
+dim(ToothGrowth)        # dimension of the data set
+head(ToothGrowth)       # visualize the first rows
+```
+
+
+## 2. Basic summary.
+
+### Origin of the dataset.
+The response is the **length of odontoblasts** (teeth) in each of 10 guinea pigs at each of three **dose levels of Vitamin C** (0.5, 1, and 2 mg) with each of two delivery methods (**orange juice** or **ascorbic acid**).
+
+
+### Description of the dataset.
+
+The 'ToothGrowth' dataset contains 60 observations on 3 variables.
+
+1. **'len'**: a numeric variable indicating the tooth length.
+
+2. **'supp'**: a factor variable that indicates how the Vitamin C dose was administrated: 'VC' for ascorbic acide, 'OJ' for orange juice.
+
+3. **'dose'**: a numeric variable indicating the administrated dose in milligrams.
+
+
+## 3. Exploritary analysis.
+
+### Compare the administration methods.
+
+We begin with creating a data frame **"meanGrowth"** that shows the average tooth length within the two groups: **'VC'** (ascorbic acide) or **'OJ'** (orange juice). The code can be find in the **Appendix**.
+
+```{r echo=FALSE}
+DF <- ToothGrowth
+meanGrowth <- data.frame()
+groups <- split(DF, list(DF$supp, DF$dose))
+for (i in 1:length(groups)){
+        row <- data.frame('len' = colMeans(groups[[i]][1]),
+                          'supp'= groups[[i]][1,2],
+                          'dose'= colMeans(groups[[i]][3]))
+        meanGrowth <- rbind(meanGrowth, row)
+        meanGrowth <- meanGrowth[order(meanGrowth$supp),]
+        rownames(meanGrowth) <- NULL
+}
+```
+
+
+```{r}
+meanGrowth
+```
+
+The above data frame suggests that the tooth lentgh growth is higher for the guinea pigs in the 'OJ' group than for those in the 'VC' group. One can evaluate this hypothesis by testing it against the **null hypothesis**, namely, "there is a zero mean difference between the two groups". Let's run a paired **t test** using the _t.test_ command!
+
+```{r echo=FALSE}
+# Confidence interval for the mean difference between the two groups
+# ("group 2 minus group 1").
+g2 <- subset(ToothGrowth, supp == 'OJ')$len
+g1 <- subset(ToothGrowth, supp == 'VC')$len
+TTest <- t.test(g2, g1, paired = TRUE, var.equal = FALSE)
+```
+
+
+```{r}
+TTest$conf.int; TTest$statistic
+```
+
+The **confidence interval** `r TTest$conf.int` for the mean difference **does not contain 0**. Moreover, the **t statistic** `r TTest$statistic` is larger than 2. We thus **reject** the null hypothesis in favor of the **alternative hypothesis**. 
+
+However, observe from the data set **"meanGrowth"** that, if a clear difference in the tooth growth exists between the two delivery methods for doses equal to 0.5 or 1.0 mg, this tends to disappear for a dose of 2.0 mg, as shown in the graph below.
+
+```{r echo=FALSE}
+par(mfrow=c(1,1))
+graph <- function(x,y1, y2){
+        plot(x,y1,type="l",lwd = 3,
+             main = "Tooth Length Mean versus Dose", 
+             ylim = c(5,26), xlab='dose', ylab='tooth length',
+             col="red")
+        lines(x,y2,col="green3",lwd = 3)
+        legend("topleft", 
+               legend = c("OJ" ,"VC"),
+               lty=c(1,1),lwd=c(3,3),
+               col = c("red" ,"green3"), cex=1)
+}
+```
+
+```{r}
+x <- subset(meanGrowth, supp == 'VC')[['dose']]
+y_OJ <- subset(meanGrowth, supp == 'OJ')[['len']]
+y_VC <- subset(meanGrowth, supp == 'VC')[['len']]
+graph(x,y_OJ,y_VC)
+```
+
+One can test this hypothesis by comparing the difference between the two groups for equal doses. Let's run a series of t **tests**...
+
+
+```{r echo=FALSE}
+# Confidence interval for the mean difference between the two groups
+# ("group 2 minus group 1").
+dose_groups <- split(ToothGrowth, ToothGrowth$dose)
+h1 <- subset(dose_groups[['0.5']], supp == 'VC')$len
+h2 <- subset(dose_groups[['0.5']], supp == 'OJ')$len
+hh1 <- subset(dose_groups[['1']], supp == 'VC')$len
+hh2 <- subset(dose_groups[['1']], supp == 'OJ')$len
+hhh1 <- subset(dose_groups[['2']], supp == 'VC')$len
+hhh2 <- subset(dose_groups[['2']], supp == 'OJ')$len
+TTest1 <- t.test(h2, h1, paired = TRUE, var.equal = FALSE)
+TTest2 <- t.test(hh2, hh1, paired = TRUE, var.equal = FALSE)
+TTest3 <- t.test(hhh2, hhh1, paired = TRUE, var.equal = FALSE)
+```
+
+```{r}
+TTest1$conf.int; TTest1$statistic 
+TTest2$conf.int; TTest2$statistic
+TTest3$conf.int; TTest3$statistic 
+```
+
+The **confidence intervals** for the mean difference, for doses equal to 0.5 and 1mg are `r TTest1$conf.int`, and `r TTest2$conf.int`, respectively. Moreover, the associated **t statistic** are `r TTest1$statistic`, and `r TTest2$statistic`, respectively. We therefore **reject** the **null hypothesis** for 0.5 and 1 mg doses in favor of the **alternative hypothesis**. However, for a 2mg dose, one **fails to conclude**. Indeed the confidence interval `r TTest3$conf.int` contains 0, but the associated t statistic `r TTest3$statistic` is too small. 
+
+## 4. Conclusion
+
+Our analysis demontrates a clear difference in the tooth length growth for the two delivery methods for doses less or equal to 1mg. However, this phenomenon tends to attenuate for larger doses.  
+
+
+# Appendix.
+
+```{r}
+# create a data set "meanGrowth" that shows the mean tooth length
+# for a given dose and a delivery method
+DF <- ToothGrowth
+meanGrowth <- data.frame()
+groups <- split(DF, list(DF$supp, DF$dose))
+for (i in 1:length(groups)){
+        row <- data.frame('len' = colMeans(groups[[i]][1]),
+                          'supp'= groups[[i]][1,2],
+                          'dose'= colMeans(groups[[i]][3]))
+        meanGrowth <- rbind(meanGrowth, row)
+        meanGrowth <- meanGrowth[order(meanGrowth$supp),]
+        rownames(meanGrowth) <- NULL
+}
+```
+
+```{r}
+# Confidence interval for the mean difference between the two groups
+g2 <- subset(ToothGrowth, supp == 'OJ')$len
+g1 <- subset(ToothGrowth, supp == 'VC')$len
+TTest <- t.test(g2, g1, paired = TRUE, var.equal = FALSE)
+```
+
+```{r}
+# the 'graph' function plots a single for two different groups 
+par(mfrow=c(1,1))
+graph <- function(x,y1, y2){
+        plot(x,y1,type="l",lwd = 3,
+             main = "Tooth Length Mean versus Dose", 
+             ylim = c(5,26), xlab='dose', ylab='tooth length',
+             col="red")
+        lines(x,y2,col="green3",lwd = 3)
+        legend("topleft", 
+               legend = c("OJ" ,"VC"),
+               lty=c(1,1),lwd=c(3,3),
+               col = c("red" ,"green3"), cex=1)
+}
+```
+
+```{r}
+# Confidence intervals for the mean difference between the two groups
+# for a given dose.
+dose_groups <- split(ToothGrowth, ToothGrowth$dose)
+h1 <- subset(dose_groups[['0.5']], supp == 'VC')$len
+h2 <- subset(dose_groups[['0.5']], supp == 'OJ')$len
+hh1 <- subset(dose_groups[['1']], supp == 'VC')$len
+hh2 <- subset(dose_groups[['1']], supp == 'OJ')$len
+hhh1 <- subset(dose_groups[['2']], supp == 'VC')$len
+hhh2 <- subset(dose_groups[['2']], supp == 'OJ')$len
+TTest1 <- t.test(h2, h1, paired = TRUE, var.equal = FALSE)
+TTest2 <- t.test(hh2, hh1, paired = TRUE, var.equal = FALSE)
+TTest3 <- t.test(hhh2, hhh1, paired = TRUE, var.equal = FALSE)
+```
+
+
+
